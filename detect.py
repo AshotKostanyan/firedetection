@@ -27,15 +27,39 @@ Usage - formats:
                                  yolov5s_edgetpu.tflite     # TensorFlow Edge TPU
                                  yolov5s_paddle_model       # PaddlePaddle
 """
-
+from telegram import Bot
 import argparse
 import csv
+import asyncio
 import os
 import platform
 import sys
 from pathlib import Path
 
 import torch
+
+
+# import telebot
+
+# bot = telebot.TeleBot('6759678177:AAGHvGCAfMTxIFABHO3MA4N01V1nR7PUEkQ')
+
+# @bot.message_handler()
+# def start(message):
+#     bot.send_message(message.chat.id, message.chat.id)
+
+
+# bot.polling(none_stop=True)
+
+
+async def send_telegram_photo(photo_path, caption):
+    bot_token = '6759678177:AAGHvGCAfMTxIFABHO3MA4N01V1nR7PUEkQ'
+    chat_id = '2001076898'
+    bot = Bot(token=bot_token)
+    with open(photo_path, 'rb') as photo:
+        await bot.send_photo(chat_id=chat_id, photo=photo, caption=caption)
+
+
+
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -53,7 +77,7 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 
 @smart_inference_mode()
-def run(
+async def run(
         weights=ROOT / 'yolov5s.pt',  # model path or triton URL
         source=ROOT / 'data/images',  # file/dir/URL/glob/screen/0(webcam)
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
@@ -224,8 +248,9 @@ def run(
                             fps, w, h = 30, im0.shape[1], im0.shape[0]
                         save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
+                        path = save_path
                     vid_writer[i].write(im0)
-
+        await send_telegram_photo(photo_path = path ,caption = '⚠warning⚠')
         # Print time (inference-only)
         LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
 
@@ -235,6 +260,7 @@ def run(
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
+
     if update:
         strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
 
@@ -275,11 +301,13 @@ def parse_opt():
     return opt
 
 
-def main(opt):
+async def main(opt):
     check_requirements(ROOT / 'requirements.txt', exclude=('tensorboard', 'thop'))
-    run(**vars(opt))
+    await run(**vars(opt))
 
 
 if __name__ == '__main__':
     opt = parse_opt()
-    main(opt)
+    asyncio.run(main(opt))
+
+
